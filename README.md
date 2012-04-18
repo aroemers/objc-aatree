@@ -1,4 +1,4 @@
-# Description
+## Description
 
 This is an implementation of the Arne Andersson Tree, which is a *balanced binary search tree*. In short, that means *fast* look-up times to objects! For more information on how the balancing, inserting and deletion algorithms work, see [wikipedia](http://en.wikipedia.org/wiki/Andersson_tree.) 
 
@@ -16,7 +16,7 @@ This class requires Mac OS X v10.6, since it uses blocks.
 
 ## Usage 
 
-Download the latest revision from the downloads or check out the source to get started. See the UsageExample wiki page for how to use it in your source code. 
+Download the latest revision from the downloads or check out the source to get started. See the [Usage](https://github.com/aroemers/objc-aatree/wiki/Usage) wiki page for how to use it in your source code. 
 
 
 Code license: New BSD License 
