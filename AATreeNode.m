@@ -35,7 +35,11 @@
 	
 	AATreeNode *copy = [[AATreeNode alloc] initWithData:data boundToKey:key];
 	copy.left = [left copy];
+    if (copy.left)
+        copy.left.parent = copy;
 	copy.right = [right copy];
+    if (copy.right)
+        copy.right.parent = copy;
 	copy.level = level;
 	return copy;
 }
@@ -102,6 +106,7 @@
 {
 	[left release];
 	[right release];
+    [parent release];
 	[data release];
 	[key release];
 	[super dealloc];
