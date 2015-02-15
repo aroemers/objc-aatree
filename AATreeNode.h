@@ -6,6 +6,7 @@
 // AA tree properties.
 @property(retain) AATreeNode *left;
 @property(retain) AATreeNode *right;
+@property(retain) AATreeNode *parent;
 @property(assign) int level;
 
 // Data properties.
@@ -30,6 +31,20 @@
  * @abstract				Adds the node in-order to the specified array.
  */
 - (void) addKeyToArray:(NSMutableArray *)anArray;
+
+/*!
+ * @abstract				Get the next sequential Node.
+ * @discussion				Use the right or the parent to walk the tree forward.
+ *                          Return nil at the end of the tree.
+ */
+- (AATreeNode *)next;
+
+/*!
+ * @abstract				Get the previous sequential Node.
+ * @discussion				Use the left or the parent to walk the tree backward.
+ *                          Return nil at the end of the tree.
+ */
+- (AATreeNode *)prev;
 
 
 /*!

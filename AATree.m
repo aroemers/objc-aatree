@@ -7,7 +7,6 @@
 @interface AATree() // private methods.
 
 @property(retain) AATreeNode *root;
-@property(assign) NSUInteger count;
 @property(retain) NSComparator keyComparator;
 
 /*!
@@ -80,6 +79,21 @@
  */
 - (AATreeNode *) __nodeClosestToKey:(id)aKey atRoot:(AATreeNode *)aRoot;
 
+/*!
+ * @abstract				Get the Tree Node bound to the specified key,
+ *                          using the supplied Comparator function. 
+ * @discussion				The comparator may look for a shortened primary key.
+ *                          It must not assume a sort order other than that created by
+ *                          the default comparator for the AATree.
+ *                          If several nodes match the key the highest matching node
+ *                          in the tree is returned.
+ *	
+ * @param aKey				The key to look for.
+ * @param andComparator     A Comparator that may find a continuous subset of the Tree.
+ * @result					An AATreeNode found, or nil when no data has been found.
+ */
+- (AATreeNode *) __nodeByKey:(id)aKey
+               andComparator:(NSComparator)aKeyComparator;
 
 /*!
  * @abstract				Performs a recursive skew operation.
@@ -119,6 +133,8 @@
 
 @implementation AATree
 
+@synthesize count;
+
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // -- public methods --
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -145,29 +161,99 @@
 	
 	[self __lockForReading];
 	copy.root = [root copy];
-	copy.count = count;
+	copy->count = count;
 	[self __unlock];
 	
 	return copy;
 }
 
-
-- (NSUInteger) count {
-
-	return count;
+- (AATreeNode *)first
+{
+    // Find the first object.
+    [self __lockForReading];
+    AATreeNode *theFirst = root;
+    while (theFirst && theFirst.left)
+        theFirst = theFirst.left;
+    [self __unlock];
+    
+    return theFirst;
 }
-
-
+- (AATreeNode *)last
+{
+    // Find the last object.
+    [self __lockForReading];
+    AATreeNode *theLast = root;
+    while (theLast && theLast.right)
+        theLast = theLast.right;
+    [self __unlock];
+    
+    return theLast;
+}
+- (AATreeNode *)nodeByKey:(id)aKey
+{
+    AATreeNode *result;
+    
+    [self __lockForReading];
+    result = [self __nodeAtKey:aKey];
+    [self __unlock];
+    
+    return result;
+}
+- (AATreeNode *)nodeByKey:(id)aKey
+            andComparator:(NSComparator)aKeyComparator
+{
+    [self __lockForReading];
+    AATreeNode *nodeToReturn = [self __nodeByKey:aKey
+                                   andComparator:aKeyComparator];
+    [self __unlock];
+    
+    return nodeToReturn;
+}
+- (AATreeNode *)firstNodeByKey:(id)aKey
+                 andComparator:(NSComparator)aKeyComparator
+{
+    [self __lockForReading];
+    AATreeNode *foundNode = [self __nodeByKey:aKey
+                                andComparator:aKeyComparator];
+    if (! foundNode)
+    {
+        [self __unlock];
+        return nil;
+    }
+    
+    // Do a binary search to the left finding the first key that matches the comparator.
+    AATreeNode *prevNode = foundNode.left;
+    while (prevNode)
+    {
+        NSComparisonResult compareResult = aKeyComparator(aKey, prevNode.key);
+        if (compareResult == NSOrderedSame)
+        {
+            // Keep looking to the left.
+            foundNode = prevNode;
+            prevNode = prevNode.left;
+        }
+        
+        // We're gone to far to the left, edge rightward.
+        else if (compareResult == NSOrderedDescending)
+            prevNode = prevNode.right;
+        
+        // Shouldn't happen.
+        else
+            break;
+    }
+    [self __unlock];
+    
+    return foundNode;
+}
 
 - (NSEnumerator *) keyEnumerator {
 	
-	NSMutableArray *keys = [NSMutableArray arrayWithCapacity:count];
-
-	[self __lockForReading];
-	[root addKeyToArray:keys];
-	[self __unlock];
-
-	return [keys objectEnumerator];
+    AAKeyEnumerator *myEnumerator = [[[AAKeyEnumerator alloc] initWithFirstNode:self.first] autorelease];
+    myEnumerator.returnKeys = TRUE;
+    return myEnumerator;
+}
+- (NSEnumerator *) objectEnumerator {
+    return [[[AAKeyEnumerator alloc] initWithFirstNode:self.first] autorelease];
 }
 
 
@@ -201,6 +287,15 @@
 
 	[self __lockForWriting];
 	self.root = [self __deleteNodeAtKey:aKey atRoot:root];
+    if (self.root)
+        self.root.parent = nil;
+	[self __unlock];
+}
+- (void)removeAllObjects
+{
+	[self __lockForWriting];
+    self.root = nil;
+    count = 0;
 	[self __unlock];
 }
 
@@ -214,6 +309,7 @@
 	[self __lockForWriting];
 	AATreeNode *newNode = [[[AATreeNode alloc] initWithData:anObject boundToKey:[aKey copy]] autorelease];
 	self.root = [self __insertNode:newNode atRoot:root];
+    self.root.parent = nil;
 	[self __unlock];
 }
 
@@ -231,7 +327,6 @@
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
 @synthesize root;
-@synthesize count;
 @synthesize keyComparator;
 
 - (AATreeNode *) __deleteNodeAtKey:(id)aKey atRoot:(AATreeNode *)aRoot {
@@ -256,6 +351,7 @@
 				
 				// Delete the in-order predecessor (heir).
 				aRoot.left = [self __deleteNodeAtKey:aRoot.key atRoot:aRoot.left];
+                aRoot.left.parent = aRoot;
 				
 			} else if (aRoot.left) {
 				aRoot = aRoot.left;
@@ -268,8 +364,10 @@
 		// Otherwise, travel left or right.
 		} else if (compareResult == NSOrderedAscending) {
 			aRoot.left = [self __deleteNodeAtKey:aKey atRoot:aRoot.left];
+            aRoot.left.parent = aRoot;
 		} else {
 			aRoot.right = [self __deleteNodeAtKey:aKey atRoot:aRoot.right];
+            aRoot.right.parent = aRoot;
 		}
 		
 		// Check whether the levels or the children are not more than one
@@ -305,8 +403,14 @@
 			
 		// Otherwise, travel left or right through the tree.
 		} else {
-			if (compareResult == NSOrderedAscending) aRoot.left = [self __insertNode:aNode atRoot:aRoot.left];
-			else aRoot.right = [self __insertNode:aNode atRoot:aRoot.right];
+            if (compareResult == NSOrderedAscending) { 
+                aRoot.left = [self __insertNode:aNode atRoot:aRoot.left];
+                aRoot.left.parent = aRoot;
+            }
+            else {
+                aRoot.right = [self __insertNode:aNode atRoot:aRoot.right];
+                aRoot.right.parent = aRoot;
+            }
 			
 			// After the node has been added, skew and split the (possibly new) root.
 			// Because of the recursive nature of this function, all parents of the
@@ -318,6 +422,7 @@
 	// Otherwise, insert the node.
 	} else {
 		aRoot = aNode;
+        aNode.parent = nil;
 		count++;
 	}
 	
@@ -381,6 +486,25 @@
 }
 
 
+- (AATreeNode *)__nodeByKey:(id)aKey
+              andComparator:(NSComparator)aKeyComparator
+{
+    // Begin at the root of the tree.
+    AATreeNode *current = root;
+    
+    // While still at a node, check whether we have found the correct node or
+    // travel left or right.
+    while (current) {
+        NSComparisonResult compareResult = aKeyComparator(aKey, current.key);
+        if (compareResult == NSOrderedSame)	return current;
+        else if (compareResult == NSOrderedAscending) current = current.left;
+        else current = current.right;
+    }
+    
+    return current;
+}
+
+
 - (AATreeNode *) __skew:(AATreeNode *)aRoot {
 
 	if (aRoot) {
@@ -392,11 +516,14 @@
 			AATreeNode *save = aRoot;
 			aRoot = aRoot.left;
 			save.left = aRoot.right;
+            save.left.parent = save;
 			aRoot.right = save;
+            aRoot.right.parent = aRoot;
 		}
 		
 		// Skew the right side of the (new) root.
 		aRoot.right = [self __skew:aRoot.right];
+        aRoot.right.parent = aRoot;
 	}
 	
 	return aRoot;
@@ -412,13 +539,16 @@
 		AATreeNode *save = aRoot;
 		aRoot = aRoot.right;
 		save.right = aRoot.left;
+        save.right.parent = save;
 		aRoot.left = save;
+        aRoot.left.parent = aRoot;
 		
 		// Increase the level of the new root.
 		aRoot.level++;
 		
 		// Split the right side of the new root.
 		aRoot.right = [self __split:aRoot.right];
+        aRoot.right.parent = aRoot;
 	}
 	
 	return aRoot;
@@ -428,6 +558,33 @@
 - (void) __unlock {
 	
 	pthread_rwlock_unlock(&rwLock);
+}
+
+@end
+
+@implementation AAKeyEnumerator
+
+@synthesize nextNode;
+
+- (id)initWithFirstNode:(AATreeNode *)firstNode {
+    
+    if (self = [super init]) {
+        self.returnKeys = FALSE;
+        self.nextNode = firstNode;
+    }
+    return self;
+}
+
+- (id)nextObject
+{
+    if (! self.nextNode)
+        return nil;
+    
+    id objReturn = self.returnKeys ? self.nextNode.key : self.nextNode.data;
+    
+    self.nextNode = self.nextNode.next;
+    
+    return objReturn;
 }
 
 @end

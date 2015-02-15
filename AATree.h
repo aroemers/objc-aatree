@@ -57,8 +57,9 @@
 	
 	// The readers/writer lock for thread safety.
 	pthread_rwlock_t rwLock;
-
 }
+
+@property (assign, readonly) NSUInteger count;
 
 
 /*!
@@ -101,6 +102,57 @@
  */
 - (NSUInteger) count;
 
+/*!
+ * @result					The very leftmost leaf of the tree.
+ */
+- (AATreeNode *)first;
+
+/*!
+ * @result					The very rightmost leaf of the tree.
+ */
+- (AATreeNode *)last;
+
+/*!
+ * @abstract				Get the actual Tree Node bound to the specified key. 
+ * @discussion				The key comparator, as specified at the initialization 
+ *							of this tree, is used for comparing the keys.
+ *	
+ * @param aKey				The key to look for.
+ * @result					The AATreeNode found, or nil when no data has been found.
+ */
+- (AATreeNode *)nodeByKey:(id)aKey;
+
+/*!
+ * @abstract				Get the actual Tree Node bound to the specified key,
+ *                          using the supplied Comparator function. 
+ * @discussion				The comparator may look for a shortened primary key.
+ *                          It must not assume a sort order other than that created by
+ *                          default comparator for the AATree.
+ *                          If several nodes match the key the highest matching node
+ *                          in the tree is returned.
+ *	
+ * @param aKey				The key to look for.
+ * @param andComparator     A Comparator that may find a continuous subset of the Tree.
+ * @result					An AATreeNode found, or nil when no data has been found.
+ */
+- (AATreeNode *)nodeByKey:(id)aKey
+            andComparator:(NSComparator)aKeyComparator;
+
+/*!
+ * @abstract				Get the actual Tree Node bound to the first instance of
+                            specified key, using the supplied Comparator function. 
+ * @discussion				The comparator may look for a shortened primary key.
+ *                          It must not assume a sort order other than that created by
+ *                          default comparator for the AATree.
+ *                          If several nodes match the key the leftmost matching node
+ *                          is returned.
+ *	
+ * @param aKey				The key to look for.
+ * @param andComparator     A Comparator that may find a continuous subset of the Tree.
+ * @result					The AATreeNode found, or nil when no data has been found.
+ */
+- (AATreeNode *)firstNodeByKey:(id)aKey
+                 andComparator:(NSComparator)aKeyComparator;
 
 /*!
  * @abstract				Returns an enumerator which enumerates over the keys in the	tree.
@@ -108,10 +160,13 @@
  *							keys are ordered ascending. Also note that the enumerated keys
  *							are copies of the actual keys, so modifying the keys does not
  *							influence the tree.
+ *                          *****These functions are not Thread Safe****
+ *                          You may not change the AATree while using these Enumerators.
  *
  * @result					A NSEnumerator instance for enumerating the keys.
  */
-- (NSEnumerator *) keyEnumerator;
+- (NSEnumerator *) keyEnumerator;       
+- (NSEnumerator *) objectEnumerator;    // Default function override
 
 
 /*!
@@ -155,6 +210,7 @@
  * @param aKey				The key to look for.
  */
 - (void) removeObjectForKey:(id)aKey;
+- (void) removeAllObjects;
 
 
 /*!
@@ -167,5 +223,18 @@
  * @param aKey				The key to bind the data object to, which must not be nil.
  */
 - (void) setObject:(id)anObject forKey:(id)aKey;
+
+@end
+
+/*
+ *                          *****These object not Thread Safe****
+ *                          You may not change the AATree while using this Enumerators.
+ */
+@interface AAKeyEnumerator : NSEnumerator
+
+@property (assign) BOOL returnKeys;
+@property (retain) AATreeNode *nextNode;
+
+- initWithFirstNode:(AATreeNode *)firstNode;
 
 @end
