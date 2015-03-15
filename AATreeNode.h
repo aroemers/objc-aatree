@@ -6,7 +6,7 @@
 // AA tree properties.
 @property(retain) AATreeNode *left;
 @property(retain) AATreeNode *right;
-@property(retain) AATreeNode *parent;
+@property(assign) AATreeNode *parent;       // Weak Reference
 @property(assign) int level;
 
 // Data properties.
@@ -25,6 +25,20 @@
  * @result					An initialized node.
  */ 
 - (id) initWithData:(id)aDataObject boundToKey:(id)aKey;
+
+
+/*!
+ * @abstract				Initializes the node using itself as the data
+ *							and binds this node to the specified key.
+ * @discussion				
+ *                          The node will have level 1, which is the default
+ *							when adding a node to the AA tree.
+ *
+ * @param aDataObject		The data to include in the node.
+ * @param aKey				The key the node is bound to.
+ * @result					An initialized node.
+ */ 
+- (id) initWithSelfBoundToKey:(id)aKey;
 
 
 /*!

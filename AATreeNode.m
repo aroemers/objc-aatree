@@ -23,6 +23,18 @@
 }
 
 
+- (id)initWithSelfBoundToKey:(id)aKey {
+    
+    if (self = [super init]) {
+        self.data = self;
+        self.key = aKey;
+        self.level = 1;
+    }
+    
+    return self;
+}
+
+
 - (void) addKeyToArray:(NSMutableArray *)anArray {
 	
 	[left addKeyToArray:anArray];
@@ -106,7 +118,6 @@
 {
 	[left release];
 	[right release];
-    [parent release];
 	[data release];
 	[key release];
 	[super dealloc];

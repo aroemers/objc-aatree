@@ -7,7 +7,7 @@
 @interface AATree() // private methods.
 
 @property(retain) AATreeNode *root;
-@property(retain) NSComparator keyComparator;
+@property(readwrite) NSComparator keyComparator;
 
 /*!
  * @abstract				Deletes the node bound to the specified key.
@@ -244,6 +244,31 @@
     [self __unlock];
     
     return foundNode;
+}
+
+- (void)insertNode:(AATreeNode *)aNode {
+    
+    // If this node's key is already in the tree, swap the new node with the existing node.
+    [self __lockForWriting];
+    AATreeNode *existingNode = [self nodeByKey:aNode.key];
+    if (existingNode)
+    {
+        AATreeNode *existingParent = existingNode.parent;
+        
+        if (! existingParent)
+            self.root = aNode;
+        else if (existingParent.left == existingNode)
+            existingParent.left = aNode;
+        else
+            existingParent.right = aNode;
+        
+        aNode.left = existingNode.left;
+        aNode.right = existingNode.right;
+        aNode.parent = existingParent;
+    }
+    else
+        self.root = [self __insertNode:aNode atRoot:root];
+    [self __unlock];
 }
 
 - (NSEnumerator *) keyEnumerator {
@@ -585,6 +610,13 @@
     self.nextNode = self.nextNode.next;
     
     return objReturn;
+}
+
+- (void)dealloc
+{
+    [nextNode release];
+    
+    [super dealloc];
 }
 
 @end

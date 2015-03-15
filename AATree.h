@@ -155,6 +155,18 @@
                  andComparator:(NSComparator)aKeyComparator;
 
 /*!
+ * @abstract				Insert an already prepared node into the tree.
+ * @discussion				Use this function if you'd like to use nodes that are descendents
+ *                          of AATreeNode, and contain the data portion in the descendent
+ *                          object, saving one allocation.
+ *                          If the specified key is already in the tree, the node there will
+ *                          be replaced with this one. Note that the key must not be nil.
+ *
+ * @param aNode             A properly prepared node, which must not be nil.
+ */
+- (void) insertNode:(AATreeNode *)aNode;
+
+/*!
  * @abstract				Returns an enumerator which enumerates over the keys in the	tree.
  * @discussion				The keys in the enumerator are order in-order. This means the
  *							keys are ordered ascending. Also note that the enumerated keys
