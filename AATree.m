@@ -378,13 +378,14 @@
 				aRoot.left = [self __deleteNodeAtKey:aRoot.key atRoot:aRoot.left];
                 aRoot.left.parent = aRoot;
 				
-			} else if (aRoot.left) {
-				aRoot = aRoot.left;
 			} else {
-				aRoot = aRoot.right; // which could be nil.
+				if (aRoot.left) {
+					aRoot = aRoot.left;
+				} else {
+					aRoot = aRoot.right; // which could be nil.
+				}
+				count--;
 			}
-			
-			count--;
 
 		// Otherwise, travel left or right.
 		} else if (compareResult == NSOrderedAscending) {
